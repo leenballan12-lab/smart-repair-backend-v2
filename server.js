@@ -311,7 +311,6 @@ app.get("/technicians", (req, res) => {
 });
 
 
-
 app.delete("/delete-user/:id", (req, res) => {
 
     const id = req.params.id;
@@ -1811,6 +1810,38 @@ app.post("/mark-read", (req, res) => {
 
 });
 
+app.post("/sell-request", (req, res) => {
+  const { user_email, image, price, description } = req.body;
+
+  const sql = `
+    INSERT INTO sell_requests (user_email, image, price, description)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(sql, [user_email, image, price, description], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Request created", id: result.insertId });
+  });
+});
+app.get("/sell-requests", (req, res) => {
+  db.query("SELECT * FROM sell_requests ORDER BY id DESC", (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json(result);
+  });
+});
+
+app.put("/sell-request/:id/status", (req, res) => {
+  const { status } = req.body;
+
+  db.query(
+    "UPDATE sell_requests SET status = ? WHERE id = ?",
+    [status, req.params.id],
+    (err) => {
+      if (err) return res.status(500).json(err);
+      res.json({ message: "Updated" });
+    }
+  );
+});
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server running");
