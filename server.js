@@ -1836,18 +1836,30 @@ app.get("/sell-requests", (req, res) => {
     res.json(result);
   });
 });
+app.put("/sell-request/:id", (req, res) => {
 
-app.put("/sell-request/:id/status", (req, res) => {
+  const { id } = req.params;
   const { status } = req.body;
 
   db.query(
-    "UPDATE sell_requests SET status = ? WHERE id = ?",
-    [status, req.params.id],
-    (err) => {
-      if (err) return res.status(500).json(err);
-      res.json({ message: "Updated" });
+    "UPDATE sell_requests SET status=? WHERE id=?",
+    [status, id],
+    (err, result) => {
+
+      if (err) {
+        console.log(err);
+        return res.status(500).json({
+          success: false
+        });
+      }
+
+      res.json({
+        success: true
+      });
+
     }
   );
+
 });
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
