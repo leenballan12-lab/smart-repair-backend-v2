@@ -1861,6 +1861,25 @@ app.put("/sell-request/:id", (req, res) => {
   );
 
 });
+
+app.post("/device-order", (req, res) => {
+  const { request_id, buyer_email, seller_email, price } = req.body;
+
+  const sql = `
+    INSERT INTO device_orders 
+    (request_id, buyer_email, seller_email, price, status)
+    VALUES (?, ?, ?, ?, 'Pending')
+  `;
+
+  db.query(
+    sql,
+    [request_id, buyer_email, seller_email, price],
+    (err, result) => {
+      if (err) return res.status(500).send(err);
+      res.send("Order created");
+    }
+  );
+});
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server running");
