@@ -79,34 +79,41 @@ app.post("/admin-login", (req, res) => {
 
 app.post("/login", (req, res) => {
 
-  const { email, password } = req.body;
+  const { email, password, role } = req.body;
 
-  const sql = "SELECT * FROM users WHERE email=? AND password=?";
+  db.query(
+    "SELECT * FROM users WHERE email=? AND password=?",
+    [email, password],
+    (err, result) => {
 
-  db.query(sql, [email, password], (err, result) => {
+      if (err) {
+        return res.json({
+          status: "failed"
+        });
+      }
 
-    if (err) {
-      console.log("LOGIN ERROR:", err);
+      if (result.length === 0) {
+        return res.json({
+          status: "failed"
+        });
+      }
 
-      return res.status(500).json({
-        status: "error",
-        message: err.message
-      });
-    }
+      const user = result[0];
 
-    if (result && result.length > 0) {
-      return res.json({
+      if (user.role !== role) {
+        return res.json({
+          status: "failed",
+          message: "Wrong role"
+        });
+      }
+
+      res.json({
         status: "success",
-        user: result[0]
+        user
       });
+
     }
-
-    return res.json({
-      status: "fail"
-    });
-
-  });
-
+  );
 });
 
   app.post("/add-user", (req, res) => {
