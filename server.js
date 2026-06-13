@@ -1967,7 +1967,32 @@ app.get("/notifications/:email", (req, res) => {
   );
 
 });
+app.put("/update-profile", (req, res) => {
+  const { id, name, email, about } = req.body;
 
+  const sql = `
+    UPDATE users
+    SET name = ?, email = ?, about = ?
+    WHERE id = ?
+  `;
+
+  db.query(
+    sql,
+    [name, email, about, id],
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).json({
+          status: "error"
+        });
+      }
+
+      res.json({
+        status: "success"
+      });
+    }
+  );
+});
 
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
