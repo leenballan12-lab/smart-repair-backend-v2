@@ -1968,28 +1968,21 @@ app.get("/notifications/:email", (req, res) => {
 
 });
 app.put("/update-profile", (req, res) => {
-  const { id, name, email, about } = req.body;
-
-  const sql = `
-    UPDATE users
-    SET name = ?, email = ?, about = ?
-    WHERE id = ?
-  `;
+  const { email, name, about } = req.body;
 
   db.query(
-    sql,
-    [name, email, about, id],
-    (err, result) => {
+    `
+    UPDATE profile
+    SET name=?, about=?
+    WHERE email=?
+    `,
+    [name, about, email],
+    (err) => {
       if (err) {
-        console.log(err);
-        return res.status(500).json({
-          status: "error"
-        });
+        return res.json({ status: "error" });
       }
 
-      res.json({
-        status: "success"
-      });
+      res.json({ status: "success" });
     }
   );
 });
