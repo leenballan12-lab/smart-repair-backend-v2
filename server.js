@@ -1902,6 +1902,10 @@ app.post("/device-order", (req, res) => {
               "🎉 Your device has been sold"
             ]
           );
+          db.query(
+  "UPDATE sell_requests SET status='Sold' WHERE id=?",
+  [request_id]
+);
 
           // 4. success response
           return res.json({
