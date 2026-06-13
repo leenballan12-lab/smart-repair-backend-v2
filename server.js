@@ -218,35 +218,69 @@ app.post("/ai-booking", (req, res) => {
     });
 
 });
-
 app.post("/add-technician", (req, res) => {
+  const {
+    name,
+    speciality,
+    location,
+    price,
+    image,
+    rating,
+    phone,
+    about,
+    experience
+  } = req.body;
 
-    const {
-        name,
-        speciality,
-        location,
-        price,
-        image,
-        rating
-    } = req.body;
+  const sql = `
+    INSERT INTO technicians 
+    (name, speciality, location, price, image, rating, phone, about, experience)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
 
-    const sql = `
-      INSERT INTO technicians 
-      (name, speciality, location, price, image, rating)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
+  db.query(
+    sql,
+    [name, speciality, location, price, image, rating, phone, about, experience],
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        return res.json({ status: "error" });
+      }
 
-    db.query(
-      sql,
-      [name, speciality, location, price, image, rating],
-      (err) => {
-        if (err) {
-            console.log(err);
-            return res.json({ status: "error" });
-        }
+      res.json({ status: "success" });
+    }
+  );
+});
+app.post("/technicians", (req, res) => {
+  const {
+    name,
+    device,
+    location,
+    rating,
+    price,
+    phone,
+    image,
+    experience,
+    about
+  } = req.body;
 
-        res.json({ status: "success" });
-    });
+  const sql = `
+    INSERT INTO technicians
+    (name, device, location, rating, price, phone, image, experience, about)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+    sql,
+    [name, device, location, rating, price, phone, image, experience, about],
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).json({ error: "Insert failed" });
+      }
+
+      res.json({ message: "Technician added successfully" });
+    }
+  );
 });
 
 app.post("/admin-login", (req, res) => {
@@ -1899,7 +1933,7 @@ app.post("/device-order", (req, res) => {
             "INSERT INTO notifications (user_email, message) VALUES (?, ?)",
             [
               seller_email,
-              "🎉 Your device has been sold"
+              " Your device has been sold out"
             ]
           );
           db.query(
