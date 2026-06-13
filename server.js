@@ -111,6 +111,18 @@ app.post("/login", (req, res) => {
         status: "success",
         user
       });
+      db.query(
+        "INSERT IGNORE INTO profile (email, name, about) VALUES (?, ?, '')",
+        [user.email, user.name],
+        (err2) => {
+          if (err2) console.log(err2);
+        }
+      );
+
+      res.json({
+        status: "success",
+        user
+      });
 
     }
   );
@@ -1971,18 +1983,28 @@ app.put("/update-profile", (req, res) => {
   const { email, name, about } = req.body;
 
   db.query(
-    `
-    UPDATE profile
-    SET name=?, about=?
-    WHERE email=?
-    `,
+    "UPDATE profile SET name=?, about=? WHERE email=?",
     [name, about, email],
     (err) => {
       if (err) {
+        console.log(err);
         return res.json({ status: "error" });
       }
 
       res.json({ status: "success" });
+    }
+  );
+});
+app.get("/get-profile/:email", (req, res) => {
+  const email = req.params.email;
+
+  db.query(
+    "SELECT * FROM profile WHERE email=?",
+    [email],
+    (err, result) => {
+      if (err) return res.json({ status: "error" });
+
+      res.json(result[0]);
     }
   );
 });
