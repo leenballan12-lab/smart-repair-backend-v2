@@ -1863,29 +1863,56 @@ app.put("/sell-request/:id", (req, res) => {
 });
 
 app.post("/device-order", (req, res) => {
+
   const { request_id, buyer_email, seller_email, price } = req.body;
 
-  const sql = `
-    INSERT INTO device_orders 
-    (request_id, buyer_email, seller_email, price, status)
-    VALUES (?, ?, ?, ?, 'Pending')
-  `;
-
+  // 1. check if already sold
   db.query(
-    sql,
-    [request_id, buyer_email, seller_email, price],
+    "SELECT * FROM device_orders WHERE request_id=?",
+    [request_id],
     (err, result) => {
-      if (err) return res.status(500).send(err);
-      res.send("Order created");
+
+      if (err) {
+        return res.status(500).send(err);
+      }
+
+      if (result.length > 0) {
+        return res.json({
+          status: "sold_out"
+        });
+      }
+
+      // 2. create order
+      db.query(
+        `INSERT INTO device_orders
+        (request_id, buyer_email, seller_email, price, status)
+        VALUES (?, ?, ?, ?, 'Pending')`,
+        [request_id, buyer_email, seller_email, price],
+        (err2) => {
+
+          if (err2) {
+            return res.status(500).send(err2);
+          }
+
+          // 3. notification
+          db.query(
+            "INSERT INTO notifications (user_email, message) VALUES (?, ?)",
+            [
+              seller_email,
+              "🎉 Your device has been sold"
+            ]
+          );
+
+          // 4. success response
+          return res.json({
+            status: "success"
+          });
+
+        }
+      );
+
     }
   );
-  db.query(
-  "INSERT INTO notifications (user_email, message) VALUES (?, ?)",
-  [
-    seller_email,
-    "🎉 Your device has been sold"
-  ]
-);
 });
 
 app.get("/notifications/:email", (req, res) => {
@@ -1907,53 +1934,7 @@ app.get("/notifications/:email", (req, res) => {
 
 });
 
-app.post("/device-order", (req, res) => {
 
-  const {
-    request_id,
-    buyer_email,
-    seller_email,
-    price
-  } = req.body;
-
-  // check if already sold
-  db.query(
-    "SELECT * FROM device_orders WHERE request_id=?",
-    [request_id],
-    (err, result) => {
-
-      if (err) {
-        return res.status(500).send(err);
-      }
-
-      if (result.length > 0) {
-        return res.json({
-          status: "sold_out"
-        });
-      }
-
-      // create order
-      db.query(
-        `INSERT INTO device_orders
-        (request_id,buyer_email,seller_email,price,status)
-        VALUES (?,?,?,?, 'Pending')`,
-        [request_id,buyer_email,seller_email,price],
-        (err2) => {
-
-          if (err2) {
-            return res.status(500).send(err2);
-          }
-
-          res.json({
-            status: "success"
-          });
-        }
-      );
-
-    }
-  );
-
-});
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server running");
