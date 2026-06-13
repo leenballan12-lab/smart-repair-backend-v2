@@ -76,7 +76,6 @@ app.post("/admin-login", (req, res) => {
 
 });
 
-
 app.post("/login", (req, res) => {
 
   const { email, password, role } = req.body;
@@ -100,7 +99,8 @@ app.post("/login", (req, res) => {
 
       const user = result[0];
 
-      if (user.role !== role) {
+      // ✅ إذا role مبعوت من الويب اعمل التحقق
+      if (role && user.role !== role) {
         return res.json({
           status: "failed",
           message: "Wrong role"
@@ -1879,6 +1879,80 @@ app.post("/device-order", (req, res) => {
       res.send("Order created");
     }
   );
+  db.query(
+  "INSERT INTO notifications (user_email, message) VALUES (?, ?)",
+  [
+    seller_email,
+    "🎉 Your device has been sold"
+  ]
+);
+});
+
+app.get("/notifications/:email", (req, res) => {
+
+  const email = req.params.email;
+
+  db.query(
+    "SELECT * FROM notifications WHERE user_email=? ORDER BY id DESC",
+    [email],
+    (err, result) => {
+
+      if (err) {
+        return res.json([]);
+      }
+
+      res.json(result);
+    }
+  );
+
+});
+
+app.post("/device-order", (req, res) => {
+
+  const {
+    request_id,
+    buyer_email,
+    seller_email,
+    price
+  } = req.body;
+
+  // check if already sold
+  db.query(
+    "SELECT * FROM device_orders WHERE request_id=?",
+    [request_id],
+    (err, result) => {
+
+      if (err) {
+        return res.status(500).send(err);
+      }
+
+      if (result.length > 0) {
+        return res.json({
+          status: "sold_out"
+        });
+      }
+
+      // create order
+      db.query(
+        `INSERT INTO device_orders
+        (request_id,buyer_email,seller_email,price,status)
+        VALUES (?,?,?,?, 'Pending')`,
+        [request_id,buyer_email,seller_email,price],
+        (err2) => {
+
+          if (err2) {
+            return res.status(500).send(err2);
+          }
+
+          res.json({
+            status: "success"
+          });
+        }
+      );
+
+    }
+  );
+
 });
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
