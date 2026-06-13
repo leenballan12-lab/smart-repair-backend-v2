@@ -1927,11 +1927,7 @@ app.get("/notifications/:email", (req, res) => {
     "SELECT * FROM notifications WHERE user_email=? ORDER BY id DESC",
     [email],
     (err, result) => {
-
-      if (err) {
-        return res.json([]);
-      }
-
+      if (err) return res.status(500).send(err);
       res.json(result);
     }
   );
