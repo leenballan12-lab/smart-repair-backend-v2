@@ -24,10 +24,12 @@ const mysql = require("mysql");
 
 
 const http = require("http");
+
 console.log("DB_HOST =", process.env.DB_HOST);
 console.log("DB_USER =", process.env.DB_USER);
 console.log("DB_PASSWORD =", process.env.DB_PASSWORD ? "FOUND" : "MISSING");
 console.log("DB_NAME =", process.env.DB_NAME);
+
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -75,31 +77,29 @@ app.post("/admin-login", (req, res) => {
   });
 
 });
-
 app.post("/login", (req, res) => {
-
   const { email, password, role } = req.body;
 
   db.query(
-    "SELECT * FROM users WHERE email=? AND password=?",
-    [email, password],
+    "SELECT * FROM users WHERE email=?",
+    [email],
     (err, result) => {
 
       if (err) {
-        return res.json({
-          status: "failed"
-        });
+        return res.status(500).json({ status: "failed" });
       }
 
       if (result.length === 0) {
-        return res.json({
-          status: "failed"
-        });
+        return res.json({ status: "failed" });
       }
 
       const user = result[0];
 
-      // ✅ إذا role مبعوت من الويب اعمل التحقق
+      // check password here
+      if (user.password !== password) {
+        return res.json({ status: "failed" });
+      }
+
       if (role && user.role !== role) {
         return res.json({
           status: "failed",
@@ -107,10 +107,6 @@ app.post("/login", (req, res) => {
         });
       }
 
-      res.json({
-        status: "success",
-        user
-      });
       db.query(
         "INSERT IGNORE INTO profile (email, name, about) VALUES (?, ?, '')",
         [user.email, user.name],
@@ -119,7 +115,7 @@ app.post("/login", (req, res) => {
         }
       );
 
-      res.json({
+      return res.json({
         status: "success",
         user
       });
@@ -128,6 +124,30 @@ app.post("/login", (req, res) => {
   );
 });
 
+app.post("/register", (req, res) => {
+  const { email, password, name } = req.body;
+
+  db.query(
+    "INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
+    [email, password, name],
+    (err, result) => {
+      if (err) {
+        return res.json({ status: "error", message: "User exists or error" });
+      }
+
+      // 🔥 create profile automatically
+      db.query(
+        "INSERT INTO profile (email, name, about) VALUES (?, ?, '')",
+        [email, name],
+        (err2) => {
+          if (err2) console.log(err2);
+        }
+      );
+
+      return res.json({ status: "success" });
+    }
+  );
+});
   app.post("/add-user", (req, res) => {
     
 
@@ -2002,9 +2022,20 @@ app.get("/get-profile/:email", (req, res) => {
     "SELECT * FROM profile WHERE email=?",
     [email],
     (err, result) => {
-      if (err) return res.json({ status: "error" });
 
-      res.json(result[0]);
+      if (err) {
+        return res.status(500).json({ status: "error" }); // ✅ return مهم
+      }
+
+      if (result.length === 0) {
+        return res.json({ // ✅ return مهم
+          name: "",
+          email,
+          about: ""
+        });
+      }
+
+      return res.json(result[0]); // ✅ return مهم
     }
   );
 });
