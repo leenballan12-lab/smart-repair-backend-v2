@@ -7,7 +7,7 @@ const express = require("express");
 
 const cors = require("cors");
 const path = require("path");
-
+app.use("/uploads", express.static("uploads"));
 
 
 
@@ -17,33 +17,38 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/uploads", express.static("uploads"));
 
 
-const mysql = require("mysql");
+
+
 
 
 const http = require("http");
+
+const mysql = require("mysql");
 
 console.log("DB_HOST =", process.env.DB_HOST);
 console.log("DB_USER =", process.env.DB_USER);
 console.log("DB_PASSWORD =", process.env.DB_PASSWORD ? "FOUND" : "MISSING");
 console.log("DB_NAME =", process.env.DB_NAME);
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306
+  port: process.env.DB_PORT || 3306,
+  connectionLimit: 10
 });
 
 
-db.connect((err) => {
+db.getConnection((err, connection) => {
   if (err) {
     console.log("DB error", err);
   } else {
     console.log("MySQL connected");
+
+    connection.release();
   }
 });
 
@@ -1353,39 +1358,33 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-app.post("/requests-upload",
+app.post(
+  "/requests-upload",
   upload.fields([
     { name: "image", maxCount: 1 },
-    { name: "voice", maxCount: 1 }
+    { name: "voice", maxCount: 1 },
   ]),
   (req, res) => {
 
-    console.log("🔥 BODY:", req.body);
-    console.log("📁 FILES:", req.files);
-
-    const { user_email, device, problem } = req.body;
+    const { user_email, device, problem, location } = req.body;
 
     const image = req.files?.image?.[0]?.filename || null;
     const voice = req.files?.voice?.[0]?.filename || null;
 
     const sql = `
-      INSERT INTO requests (user_email, device, problem, image, voice,status)
-      VALUES (?, ?, ?, ?, ?,'Pending')
+      INSERT INTO requests 
+      (user_email, device, problem, location, image, voice, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
-    db.query(sql,
-      [user_email, device, problem, image, voice],
+    db.query(
+      sql,
+      [user_email, device, problem, location, image, voice, "Pending"],
       (err) => {
-
         if (err) {
-          console.log("❌ DB ERROR:", err);
-          return res.json({
-            status: "error",
-            error: err.message
-          });
+          console.log(err);
+          return res.json({ status: "error" });
         }
-
-        console.log("✅ INSERT SUCCESS");
 
         res.json({ status: "success" });
       }
