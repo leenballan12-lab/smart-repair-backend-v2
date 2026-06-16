@@ -18,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 
 
@@ -1344,12 +1344,12 @@ app.put("/invoices/:id", (req, res) => {
   );
 
 });
-
 const multer = require("multer");
+
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    cb(null, "uploads/"); // 👈 هون
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + "-" + file.originalname);
@@ -1357,7 +1357,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
-
 app.post(
   "/requests-upload",
   upload.fields([
