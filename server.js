@@ -2157,11 +2157,14 @@ app.put("/change-password", async (req, res) => {
     );
 
     return res.json({ status: "success" });
+
   } catch (err) {
     console.log("CHANGE PASSWORD ERROR:", err);
+
     return res.status(500).json({
       status: "error",
-      message: "Server error"
+      message: "Server error",
+      debug: err.message
     });
   }
 });
