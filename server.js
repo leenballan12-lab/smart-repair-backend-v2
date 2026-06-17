@@ -2133,6 +2133,55 @@ app.put("/reset-password", (req, res) => {
   );
 });
 
+app.put("/change-password", async (req, res) => {
+  const { email, oldPassword, newPassword } = req.body;
+
+  const user = await db.query("SELECT * FROM users WHERE email=?", [email]);
+
+  if (user.length === 0) {
+    return res.json({ status: "fail", message: "User not found" });
+  }
+
+  if (user[0].password !== oldPassword) {
+    return res.json({ status: "fail", message: "Wrong password" });
+  }
+
+  await db.query(
+    "UPDATE users SET password=? WHERE email=?",
+    [newPassword, email]
+  );
+
+  res.json({ status: "success" });
+});
+
+app.get("/sessions/:email", async (req, res) => {
+  const { email } = req.params;
+
+  const sessions = await db.query(
+    "SELECT * FROM sessions WHERE email=?",
+    [email]
+  );
+
+  res.json(sessions);
+});
+
+app.post("/logout-session", async (req, res) => {
+  const { sessionId } = req.body;
+
+  await db.query("DELETE FROM sessions WHERE id=?", [sessionId]);
+
+  res.json({ status: "success" });
+});
+
+
+app.post("/logout-all", async (req, res) => {
+  const { email } = req.body;
+
+  await db.query("DELETE FROM sessions WHERE email=?", [email]);
+
+  res.json({ status: "success" });
+});
+
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server running");
