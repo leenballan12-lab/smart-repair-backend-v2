@@ -2132,41 +2132,38 @@ app.put("/reset-password", (req, res) => {
     }
   );
 });
-app.put("/change-password", async (req, res) => {
-  try {
-    const { email, oldPassword, newPassword } = req.body;
+app.put("/change-password", (req, res) => {
+  const { email, oldPassword, newPassword } = req.body;
 
-    const [rows] = await db.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
-    );
+  db.query(
+    "SELECT * FROM users WHERE email=?",
+    [email],
+    (err, result) => {
+      if (err) {
+        return res.json({ status: "error", message: "DB error" });
+      }
 
-    if (rows.length === 0) {
-      return res.json({ status: "fail", message: "User not found" });
+      if (result.length === 0) {
+        return res.json({ status: "fail", message: "User not found" });
+      }
+
+      if (result[0].password !== oldPassword) {
+        return res.json({ status: "fail", message: "Wrong password" });
+      }
+
+      db.query(
+        "UPDATE users SET password=? WHERE email=?",
+        [newPassword, email],
+        (err2) => {
+          if (err2) {
+            return res.json({ status: "error", message: "Update failed" });
+          }
+
+          return res.json({ status: "success" });
+        }
+      );
     }
-
-    const user = rows[0];
-
-    if (user.password !== oldPassword) {
-      return res.json({ status: "fail", message: "Wrong password" });
-    }
-
-    await db.query(
-      "UPDATE users SET password = ? WHERE email = ?",
-      [newPassword, email]
-    );
-
-    return res.json({ status: "success" });
-
-  } catch (err) {
-    console.log("CHANGE PASSWORD ERROR:", err);
-
-    return res.status(500).json({
-      status: "error",
-      message: "Server error",
-      debug: err.message
-    });
-  }
+  );
 });
 
 app.get("/sessions/:email", async (req, res) => {
