@@ -229,6 +229,10 @@ app.post("/requests", (req, res) => {
     const { user_email, problem, device } = req.body;
 
     const sql = "INSERT INTO requests (user_email, problem, device) VALUES (?, ?, ?)";
+    await db.query(
+  "INSERT INTO activity_logs (message) VALUES (?)",
+  ["New repair request created"]
+);
 
     db.query(sql, [user_email, problem, device], (err) => {
         if (err) return res.json(err);
@@ -305,6 +309,10 @@ app.post("/technicians", (req, res) => {
     (name, device, location, rating, price, phone, image, experience, about)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
+  await db.query(
+  "INSERT INTO activity_logs (message) VALUES (?)",
+  ["Technician assigned to request"]
+);
 
   db.query(
     sql,
@@ -511,6 +519,10 @@ app.post("/bookings", (req, res) => {
     (user_email, technician_name, status, booking_date, booking_time)
     VALUES (?, ?, 'Pending', ?, ?)
   `;
+  await db.query(
+  "INSERT INTO activity_logs (message) VALUES (?)",
+  ["New booking created"]
+);
 
   db.query(sql, [
     user_email,
@@ -2101,6 +2113,21 @@ Problem: ${problem}`
   }
 
 });
+
+app.get("/latest-updates", async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT message FROM activity_logs ORDER BY created_at DESC LIMIT 10"
+    );
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
 
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
