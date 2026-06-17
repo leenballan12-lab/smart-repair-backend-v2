@@ -2038,6 +2038,67 @@ app.get("/get-profile/:email", (req, res) => {
   );
 });
 
+app.get("/system-status", (req,res)=>{
+
+  res.json({
+    backend:"online",
+    database:"online",
+    ai:"online"
+  });
+
+});
+
+const OpenAI = require("openai");
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+
+  baseURL: "https://openrouter.ai/api/v1",
+});
+app.post("/ai-diagnosis", async (req, res) => {
+
+  try {
+
+    const { device, problem } = req.body;
+
+    const completion =
+      await openai.chat.completions.create({
+
+        model: "mistralai/mistral-7b-instruct",
+
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert repair technician. Diagnose device problems and suggest solutions."
+          },
+          {
+            role: "user",
+            content:
+              `Device: ${device}
+Problem: ${problem}`
+          }
+        ]
+
+      });
+
+    res.json({
+      reply:
+      completion.choices[0].message.content
+    });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      error: err.message
+    });
+
+  }
+
+});
+
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server running");
