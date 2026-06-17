@@ -2117,6 +2117,22 @@ app.delete("/technicians/:id", (req, res) => {
   });
 });
 
+app.put("/reset-password", (req, res) => {
+  const { email, password } = req.body;
+
+  db.query(
+    "UPDATE users SET password=? WHERE email=?",
+    [password, email],
+    (err, result) => {
+      if (err) {
+        return res.json({ status: "error" });
+      }
+
+      res.json({ status: "success" });
+    }
+  );
+});
+
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
   console.log("Server running");
