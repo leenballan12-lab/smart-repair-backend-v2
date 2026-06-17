@@ -2047,14 +2047,17 @@ app.get("/system-status", (req,res)=>{
   });
 
 });
-
 const OpenAI = require("openai");
 
 const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
-
   baseURL: "https://openrouter.ai/api/v1",
+  defaultHeaders: {
+    "HTTP-Referer": "https://your-site.com",
+    "X-Title": "Smart Repair",
+  },
 });
+
 app.post("/ai-diagnosis", async (req, res) => {
 
   try {
@@ -2064,7 +2067,7 @@ app.post("/ai-diagnosis", async (req, res) => {
     const completion =
       await openai.chat.completions.create({
 
-        model: "mistralai/mistral-7b-instruct",
+        model: "openai/gpt-3.5-turbo",
 
         messages: [
           {
