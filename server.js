@@ -224,21 +224,28 @@ app.get("/get-bookings", (req, res) => {
 
 });
 
-
-app.post("/requests", (req, res) => {
+app.post("/requests", async (req, res) => {
+  try {
     const { user_email, problem, device } = req.body;
 
-    const sql = "INSERT INTO requests (user_email, problem, device) VALUES (?, ?, ?)";
+    const sql =
+      "INSERT INTO requests (user_email, problem, device) VALUES (?, ?, ?)";
+
+    // insert request
+    await db.query(sql, [user_email, problem, device]);
+
+    // log activity
     await db.query(
-  "INSERT INTO activity_logs (message) VALUES (?)",
-  ["New repair request created"]
-);
+      "INSERT INTO activity_logs (message) VALUES (?)",
+      ["New repair request created"]
+    );
 
-    db.query(sql, [user_email, problem, device], (err) => {
-        if (err) return res.json(err);
+    res.json({ message: "Request added" });
 
-        res.json({ message: "Request added" });
-    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post("/ai-booking", (req, res) => {
@@ -291,43 +298,52 @@ app.post("/add-technician", (req, res) => {
     }
   );
 });
-app.post("/technicians", (req, res) => {
-  const {
-    name,
-    device,
-    location,
-    rating,
-    price,
-    phone,
-    image,
-    experience,
-    about
-  } = req.body;
+app.post("/technicians", async (req, res) => {
+  try {
+    const {
+      name,
+      device,
+      location,
+      rating,
+      price,
+      phone,
+      image,
+      experience,
+      about
+    } = req.body;
 
-  const sql = `
-    INSERT INTO technicians
-    (name, device, location, rating, price, phone, image, experience, about)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-  await db.query(
-  "INSERT INTO activity_logs (message) VALUES (?)",
-  ["Technician assigned to request"]
-);
+    const sql = `
+      INSERT INTO technicians
+      (name, device, location, rating, price, phone, image, experience, about)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-  db.query(
-    sql,
-    [name, device, location, rating, price, phone, image, experience, about],
-    (err, result) => {
-      if (err) {
-        console.log(err);
-        return res.status(500).json({ error: "Insert failed" });
-      }
+    // insert technician
+    await db.query(sql, [
+      name,
+      device,
+      location,
+      rating,
+      price,
+      phone,
+      image,
+      experience,
+      about
+    ]);
 
-      res.json({ message: "Technician added successfully" });
-    }
-  );
+    // log activity
+    await db.query(
+      "INSERT INTO activity_logs (message) VALUES (?)",
+      ["Technician assigned to request"]
+    );
+
+    res.json({ message: "Technician added successfully" });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Insert failed" });
+  }
 });
-
 app.post("/admin-login", (req, res) => {
 
     const { email, password } = req.body;
@@ -506,34 +522,41 @@ app.post("/book-technician", (req, res) => {
   );
 
 });
-app.post("/bookings", (req, res) => {
-  const {
-    user_email,
-    technician_name,
-    booking_date,
-    booking_time
-  } = req.body;
+app.post("/bookings", async (req, res) => {
+  try {
+    const {
+      user_email,
+      technician_name,
+      booking_date,
+      booking_time
+    } = req.body;
 
-  const sql = `
-    INSERT INTO bookings 
-    (user_email, technician_name, status, booking_date, booking_time)
-    VALUES (?, ?, 'Pending', ?, ?)
-  `;
-  await db.query(
-  "INSERT INTO activity_logs (message) VALUES (?)",
-  ["New booking created"]
-);
+    const sql = `
+      INSERT INTO bookings 
+      (user_email, technician_name, status, booking_date, booking_time)
+      VALUES (?, ?, 'Pending', ?, ?)
+    `;
 
-  db.query(sql, [
-    user_email,
-    technician_name,
-    booking_date,
-    booking_time
-  ], (err) => {
-    if (err) return res.json({ status: "error" });
+    // insert booking
+    await db.query(sql, [
+      user_email,
+      technician_name,
+      booking_date,
+      booking_time
+    ]);
+
+    // log activity
+    await db.query(
+      "INSERT INTO activity_logs (message) VALUES (?)",
+      ["New booking created"]
+    );
 
     return res.json({ status: "success" });
-  });
+
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ status: "error", error: err.message });
+  }
 });
 
 app.get("/dashboard-stats", (req, res) => {
