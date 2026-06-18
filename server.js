@@ -2,14 +2,14 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const apiKey = process.env.OPENROUTER_API_KEY;
-const JWT_SECRET = "SMART_FIX_SECRET_KEY";
+
 
 const express = require("express");
 
 const cors = require("cors");
 const path = require("path");
 
-const jwt = require("jsonwebtoken");
+
 const bcrypt = require("bcryptjs");
 
 
@@ -85,7 +85,8 @@ app.post("/admin-login", (req, res) => {
 
 });
 
-
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = "SMART_FIX_SECRET_KEY";
 app.post("/login", (req, res) => {
   const { email, password, role } = req.body;
 
@@ -2013,6 +2014,7 @@ app.get("/notifications/:email", (req, res) => {
   );
 
 });
+
 app.put("/update-profile", (req, res) => {
   const { email, name, about } = req.body;
 
@@ -2029,8 +2031,28 @@ app.put("/update-profile", (req, res) => {
     }
   );
 });
-app.get("/get-profile/:email", (req, res) => {
-  const email = req.params.email;
+
+function verifyToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader) {
+    return res.status(401).json({ message: "No token" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+
+    req.user = user; // نخزن بيانات المستخدم
+    next();
+  });
+}
+app.get("/get-profile", verifyToken, (req, res) => {
+
+  const email = req.user.email;
 
   db.query(
     "SELECT * FROM profile WHERE email=?",
@@ -2038,18 +2060,18 @@ app.get("/get-profile/:email", (req, res) => {
     (err, result) => {
 
       if (err) {
-        return res.status(500).json({ status: "error" }); // ✅ return مهم
+        return res.status(500).json({ status: "error" });
       }
 
       if (result.length === 0) {
-        return res.json({ // ✅ return مهم
+        return res.json({
           name: "",
           email,
           about: ""
         });
       }
 
-      return res.json(result[0]); // ✅ return مهم
+      return res.json(result[0]);
     }
   );
 });
@@ -2152,13 +2174,6 @@ app.put("/reset-password", (req, res) => {
 
 
 
-app.post("/logout-all", async (req, res) => {
-  const { email } = req.body;
-
-  await db.query("DELETE FROM sessions WHERE email=?", [email]);
-
-  res.json({ status: "success" });
-});
 
 // START SERVER
 app.listen(process.env.PORT || 5000, () => {
