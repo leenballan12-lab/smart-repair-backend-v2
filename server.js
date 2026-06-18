@@ -2023,21 +2023,26 @@ app.get("/notifications/:email", (req, res) => {
 
 });
 
-app.put("/update-profile", (req, res) => {
-  const { email, name, about } = req.body;
+app.put("/update-profile", verifyToken, (req, res) => {
 
-  db.query(
-    "UPDATE profile SET name=?, about=? WHERE email=?",
-    [name, about, email],
-    (err) => {
-      if (err) {
-        console.log(err);
-        return res.json({ status: "error" });
-      }
+  const { name, about } = req.body;
 
-      res.json({ status: "success" });
+  const email = req.user.email; // 🔐 من التوكن فقط
+
+  const sql = `
+    UPDATE profile 
+    SET name=?, about=? 
+    WHERE email=?
+  `;
+
+  db.query(sql, [name, about, email], (err) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ status: "error" });
     }
-  );
+
+    res.json({ status: "success" });
+  });
 });
 
 function verifyToken(req, res, next) {
