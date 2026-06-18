@@ -2169,18 +2169,35 @@ app.delete("/technicians/:id", (req, res) => {
   });
 });
 
-app.put("/reset-password", (req, res) => {
-  const { email, password } = req.body;
+app.put("/change-password", verifyToken, (req, res) => {
+  const email = req.user.email;
+  const { oldPassword, newPassword } = req.body;
 
+  // 1. تأكد من الباسورد القديم
   db.query(
-    "UPDATE users SET password=? WHERE email=?",
-    [password, email],
+    "SELECT password FROM users WHERE email=?",
+    [email],
     (err, result) => {
-      if (err) {
-        return res.json({ status: "error" });
+      if (err) return res.json({ status: "error" });
+
+      if (result.length === 0) {
+        return res.json({ status: "not_found" });
       }
 
-      res.json({ status: "success" });
+      if (result[0].password !== oldPassword) {
+        return res.json({ status: "wrong_old" });
+      }
+
+      // 2. update password
+      db.query(
+        "UPDATE users SET password=? WHERE email=?",
+        [newPassword, email],
+        (err2) => {
+          if (err2) return res.json({ status: "error" });
+
+          return res.json({ status: "success" });
+        }
+      );
     }
   );
 });
