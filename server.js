@@ -242,15 +242,23 @@ app.get("/get-bookings", (req, res) => {
 });
 
 
-app.post("/requests", (req, res) => {
-    const { user_email, problem, device } = req.body;
+app.post("/requests", verifyToken, (req, res) => {
 
-    const sql = "INSERT INTO requests (user_email, problem, device) VALUES (?, ?, ?)";
+    const { problem, device, location } = req.body;
 
-    db.query(sql, [user_email, problem, device], (err) => {
-        if (err) return res.json(err);
+    const user_email = req.user.email; // 🔐 من التوكن
 
-        res.json({ message: "Request added" });
+    const sql = `
+      INSERT INTO requests (user_email, problem, device, location)
+      VALUES (?, ?, ?, ?)
+    `;
+
+    db.query(sql, [user_email, problem, device, location], (err) => {
+        if (err) {
+            return res.status(500).json({ status: "error" });
+        }
+
+        res.json({ status: "success" });
     });
 });
 
@@ -2050,6 +2058,7 @@ function verifyToken(req, res, next) {
     next();
   });
 }
+
 app.get("/get-profile", verifyToken, (req, res) => {
 
   const email = req.user.email;
