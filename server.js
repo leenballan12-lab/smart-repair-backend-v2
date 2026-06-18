@@ -2,13 +2,15 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const apiKey = process.env.OPENROUTER_API_KEY;
+const JWT_SECRET = "SMART_FIX_SECRET_KEY";
 
 const express = require("express");
 
 const cors = require("cors");
 const path = require("path");
 
-
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 
 const app = express();
@@ -82,6 +84,8 @@ app.post("/admin-login", (req, res) => {
   });
 
 });
+
+
 app.post("/login", (req, res) => {
   const { email, password, role } = req.body;
 
@@ -120,11 +124,23 @@ app.post("/login", (req, res) => {
         }
       );
 
-      return res.json({
-        status: "success",
-        user
-      });
+    const token = jwt.sign(
+  {
+    id: user.id,
+    email: user.email,
+    role: user.role
+  },
+  JWT_SECRET,
+  {
+    expiresIn: "7d"
+  }
+);
 
+return res.json({
+  status: "success",
+  token: token,
+  user: user
+});
     }
   );
 });
@@ -2131,78 +2147,6 @@ app.put("/reset-password", (req, res) => {
       res.json({ status: "success" });
     }
   );
-});
-app.put("/change-password", (req, res) => {
-  const email = req.body.email?.trim();
-  const oldPassword = req.body.oldPassword;
-  const newPassword = req.body.newPassword;
-
-  if (!email || !oldPassword || !newPassword) {
-    return res.json({
-      status: "fail",
-      message: "Missing fields"
-    });
-  }
-
-  db.query(
-    "SELECT * FROM users WHERE email = ?",
-    [email],
-    (err, result) => {
-      if (err) {
-        console.log(err);
-        return res.json({
-          status: "error",
-          message: "DB error"
-        });
-      }
-
-      if (!result || result.length === 0) {
-        return res.json({
-          status: "fail",
-          message: "User not found"
-        });
-      }
-
-      const user = result[0];
-
-      if (user.password !== oldPassword) {
-        return res.json({
-          status: "fail",
-          message: "Wrong old password"
-        });
-      }
-
-      db.query(
-        "UPDATE users SET password = ? WHERE email = ?",
-        [newPassword, email],
-        (err2) => {
-          if (err2) {
-            console.log(err2);
-            return res.json({
-              status: "error",
-              message: "Update failed"
-            });
-          }
-
-          return res.json({
-            status: "success",
-            message: "Password updated"
-          });
-        }
-      );
-    }
-  );
-});
-
-app.get("/sessions/:email", async (req, res) => {
-  const { email } = req.params;
-
-  const sessions = await db.query(
-    "SELECT * FROM sessions WHERE email=?",
-    [email]
-  );
-
-  res.json(sessions);
 });
 
 
