@@ -64,31 +64,28 @@ app.get("/", (req, res) => {
 
 
 
-app.post("/admin-login", (req, res) => {
+app.get("/all-users", verifyToken, (req, res) => {
 
-  const { email, password } = req.body;
-
-  // 🔥 admin fixed credentials
-  if (email === "admin@test.com" && password === "1234") {
-
-    return res.json({
-      status: "success",
-      role: "admin"
+  if (req.user.role !== "admin") {
+    return res.status(403).json({
+      message: "Access denied"
     });
-
   }
 
-  return res.json({
-    status: "fail",
-    message: "Invalid credentials"
-  });
+  db.query(
+    "SELECT * FROM users",
+    (err, result) => {
+      res.json(result);
+    }
+  );
 
 });
 
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = "SMART_FIX_SECRET_KEY";
+
 app.post("/login", (req, res) => {
-  const { email, password, role } = req.body;
+  const { email, password } = req.body;
 
   db.query(
     "SELECT * FROM users WHERE email=?",
@@ -110,12 +107,7 @@ app.post("/login", (req, res) => {
         return res.json({ status: "failed" });
       }
 
-      if (role && user.role !== role) {
-        return res.json({
-          status: "failed",
-          message: "Wrong role"
-        });
-      }
+     
 
       db.query(
         "INSERT IGNORE INTO profile (email, name, about) VALUES (?, ?, '')",
@@ -146,12 +138,17 @@ return res.json({
   );
 });
 
+const bcrypt = require("bcrypt");
+
 app.post("/register", (req, res) => {
   const { email, password, name } = req.body;
 
-  db.query(
-    "INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
-    [email, password, name],
+ const hashedPassword = await bcrypt.hash(password, 10);
+
+db.query(
+  "INSERT INTO users(name,email,password) VALUES(?,?,?)",
+  [name, email, hashedPassword]
+);
     (err, result) => {
       if (err) {
         return res.json({ status: "error", message: "User exists or error" });
@@ -1629,7 +1626,7 @@ app.get("/places", (req, res) => {
 
 
 
-app.post("/add-place", upload.single("image"), (req, res) => {
+app.post("/add-place",verifyToken, upload.single("image"), (req, res) => {
 
   const {
     name,
