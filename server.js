@@ -91,12 +91,9 @@ app.get("/all-users", verifyToken, (req, res) => {
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = "SMART_FIX_SECRET_KEY";
 
-
-
 app.post("/login", (req, res) => {
 
-  const { email, password, role } = req.body; 
-  // 👈 بنستقبل role من frontend (للتحقق فقط)
+  const { email, password, role } = req.body;
 
   db.query(
     "SELECT * FROM users WHERE email = ?",
@@ -119,7 +116,7 @@ app.post("/login", (req, res) => {
 
       const user = result[0];
 
-      // 🔐 password check
+      // 🔐 check password
       const isMatch = await bcrypt.compare(password, user.password);
 
       if (!isMatch) {
@@ -129,7 +126,10 @@ app.post("/login", (req, res) => {
         });
       }
 
-      // 🔥 ROLE CHECK (هون المهم)
+      // 🔥 ROLE LOGIC
+      // 📱 mobile → role undefined → OK
+      // 🖥️ web → role must match DB
+
       if (role && role !== user.role) {
         return res.json({
           status: "failed",
@@ -140,20 +140,17 @@ app.post("/login", (req, res) => {
       // 👤 create profile if not exists
       db.query(
         "INSERT IGNORE INTO profile (email, name, about) VALUES (?, ?, '')",
-        [user.email, user.name],
-        (err2) => {
-          if (err2) console.log(err2);
-        }
+        [user.email, user.name]
       );
 
-      // 🔐 JWT
+      // 🔐 JWT TOKEN
       const token = jwt.sign(
         {
           id: user.id,
           email: user.email,
           role: user.role
         },
-        process.env.JWT_SECRET || "secret_key",
+        JWT_SECRET,
         { expiresIn: "7d" }
       );
 
@@ -171,7 +168,6 @@ app.post("/login", (req, res) => {
   );
 });
 const bcrypt = require("bcrypt");
-
 app.post("/register", async (req, res) => {
 
   const { email, password, name } = req.body;
@@ -181,8 +177,8 @@ app.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     db.query(
-      "INSERT INTO users(name,email,password) VALUES(?,?,?)",
-      [name, email, hashedPassword],
+      "INSERT INTO users(name,email,password,role) VALUES(?,?,?,?)",
+      [name, email, hashedPassword, "user"], // 👈 مهم: كل register = user
       (err, result) => {
 
         if (err) {
@@ -192,30 +188,24 @@ app.post("/register", async (req, res) => {
           });
         }
 
-        // create profile automatically
         db.query(
           "INSERT INTO profile (email, name, about) VALUES (?, ?, '')",
-          [email, name],
-          (err2) => {
-            if (err2) console.log(err2);
-          }
+          [email, name]
         );
 
         return res.json({
-          status: "success"
+          status: "success",
+          message: "User created"
         });
       }
     );
 
   } catch (error) {
-
     return res.status(500).json({
       status: "error",
       message: "Server error"
     });
-
   }
-
 });
 
   app.post("/add-user", (req, res) => {
