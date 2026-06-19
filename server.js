@@ -62,7 +62,14 @@ app.get("/", (req, res) => {
     res.send("Server is running");
 });
 
+app.get("/admin-data", verifyToken, (req, res) => {
 
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied" });
+  }
+
+  res.json({ message: "Welcome Admin" });
+});
 
 app.get("/all-users", verifyToken, (req, res) => {
 
@@ -84,31 +91,53 @@ app.get("/all-users", verifyToken, (req, res) => {
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = "SMART_FIX_SECRET_KEY";
 
+
+
 app.post("/login", (req, res) => {
-  const { email, password } = req.body;
+
+  const { email, password, role } = req.body; 
+  // 👈 بنستقبل role من frontend (للتحقق فقط)
 
   db.query(
-    "SELECT * FROM users WHERE email=?",
+    "SELECT * FROM users WHERE email = ?",
     [email],
-    (err, result) => {
+    async (err, result) => {
 
       if (err) {
-        return res.status(500).json({ status: "failed" });
+        return res.status(500).json({
+          status: "failed",
+          message: "DB error"
+        });
       }
 
       if (result.length === 0) {
-        return res.json({ status: "failed" });
+        return res.json({
+          status: "failed",
+          message: "User not found"
+        });
       }
 
       const user = result[0];
 
-      // check password here
-      if (user.password !== password) {
-        return res.json({ status: "failed" });
+      // 🔐 password check
+      const isMatch = await bcrypt.compare(password, user.password);
+
+      if (!isMatch) {
+        return res.json({
+          status: "failed",
+          message: "Wrong password"
+        });
       }
 
-     
+      // 🔥 ROLE CHECK (هون المهم)
+      if (role && role !== user.role) {
+        return res.json({
+          status: "failed",
+          message: "Wrong role selected"
+        });
+      }
 
+      // 👤 create profile if not exists
       db.query(
         "INSERT IGNORE INTO profile (email, name, about) VALUES (?, ?, '')",
         [user.email, user.name],
@@ -117,27 +146,30 @@ app.post("/login", (req, res) => {
         }
       );
 
-    const token = jwt.sign(
-  {
-    id: user.id,
-    email: user.email,
-    role: user.role
-  },
-  JWT_SECRET,
-  {
-    expiresIn: "7d"
-  }
-);
+      // 🔐 JWT
+      const token = jwt.sign(
+        {
+          id: user.id,
+          email: user.email,
+          role: user.role
+        },
+        process.env.JWT_SECRET || "secret_key",
+        { expiresIn: "7d" }
+      );
 
-return res.json({
-  status: "success",
-  token: token,
-  user: user
-});
+      return res.json({
+        status: "success",
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      });
     }
   );
 });
-
 const bcrypt = require("bcrypt");
 
 app.post("/register", async (req, res) => {
