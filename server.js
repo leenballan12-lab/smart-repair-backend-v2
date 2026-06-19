@@ -10,7 +10,7 @@ const cors = require("cors");
 const path = require("path");
 
 
-
+const bcrypt = require("bcryptjs");
 
 
 const app = express();
@@ -62,152 +62,114 @@ app.get("/", (req, res) => {
     res.send("Server is running");
 });
 
-app.get("/admin-data", verifyToken, (req, res) => {
 
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Access denied" });
-  }
 
-  res.json({ message: "Welcome Admin" });
-});
+app.post("/admin-login", (req, res) => {
 
-app.get("/all-users", verifyToken, (req, res) => {
+  const { email, password } = req.body;
 
-  if (req.user.role !== "admin") {
-    return res.status(403).json({
-      message: "Access denied"
+  // 🔥 admin fixed credentials
+  if (email === "admin@test.com" && password === "1234") {
+
+    return res.json({
+      status: "success",
+      role: "admin"
     });
+
   }
 
-  db.query(
-    "SELECT * FROM users",
-    (err, result) => {
-      res.json(result);
-    }
-  );
+  return res.json({
+    status: "fail",
+    message: "Invalid credentials"
+  });
 
 });
 
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = "SMART_FIX_SECRET_KEY";
-
 app.post("/login", (req, res) => {
-
   const { email, password, role } = req.body;
 
   db.query(
-    "SELECT * FROM users WHERE email = ?",
+    "SELECT * FROM users WHERE email=?",
     [email],
-    async (err, result) => {
+    (err, result) => {
 
       if (err) {
-        return res.status(500).json({
-          status: "failed",
-          message: "DB error"
-        });
+        return res.status(500).json({ status: "failed" });
       }
 
       if (result.length === 0) {
-        return res.json({
-          status: "failed",
-          message: "User not found"
-        });
+        return res.json({ status: "failed" });
       }
 
       const user = result[0];
 
-      // 🔐 check password
-      const isMatch = await bcrypt.compare(password, user.password);
+      // check password here
+      if (user.password !== password) {
+        return res.json({ status: "failed" });
+      }
 
-      if (!isMatch) {
+      if (role && user.role !== role) {
         return res.json({
           status: "failed",
-          message: "Wrong password"
+          message: "Wrong role"
         });
       }
 
-      // 🔥 ROLE LOGIC
-      // 📱 mobile → role undefined → OK
-      // 🖥️ web → role must match DB
-
-      if (role && role !== user.role) {
-        return res.json({
-          status: "failed",
-          message: "Wrong role selected"
-        });
-      }
-
-      // 👤 create profile if not exists
       db.query(
         "INSERT IGNORE INTO profile (email, name, about) VALUES (?, ?, '')",
-        [user.email, user.name]
-      );
-
-      // 🔐 JWT TOKEN
-      const token = jwt.sign(
-        {
-          id: user.id,
-          email: user.email,
-          role: user.role
-        },
-        JWT_SECRET,
-        { expiresIn: "7d" }
-      );
-
-      return res.json({
-        status: "success",
-        token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role
+        [user.email, user.name],
+        (err2) => {
+          if (err2) console.log(err2);
         }
-      });
+      );
+
+    const token = jwt.sign(
+  {
+    id: user.id,
+    email: user.email,
+    role: user.role
+  },
+  JWT_SECRET,
+  {
+    expiresIn: "7d"
+  }
+);
+
+return res.json({
+  status: "success",
+  token: token,
+  user: user
+});
     }
   );
 });
-const bcrypt = require("bcrypt");
-app.post("/register", async (req, res) => {
 
+app.post("/register", (req, res) => {
   const { email, password, name } = req.body;
 
-  try {
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    db.query(
-      "INSERT INTO users(name,email,password,role) VALUES(?,?,?,?)",
-      [name, email, hashedPassword, "user"], // 👈 مهم: كل register = user
-      (err, result) => {
-
-        if (err) {
-          return res.json({
-            status: "error",
-            message: "User exists or error"
-          });
-        }
-
-        db.query(
-          "INSERT INTO profile (email, name, about) VALUES (?, ?, '')",
-          [email, name]
-        );
-
-        return res.json({
-          status: "success",
-          message: "User created"
-        });
+  db.query(
+    "INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
+    [email, password, name],
+    (err, result) => {
+      if (err) {
+        return res.json({ status: "error", message: "User exists or error" });
       }
-    );
 
-  } catch (error) {
-    return res.status(500).json({
-      status: "error",
-      message: "Server error"
-    });
-  }
+      // 🔥 create profile automatically
+      db.query(
+        "INSERT INTO profile (email, name, about) VALUES (?, ?, '')",
+        [email, name],
+        (err2) => {
+          if (err2) console.log(err2);
+        }
+      );
+
+      return res.json({ status: "success" });
+    }
+  );
 });
-
   app.post("/add-user", (req, res) => {
     
 
