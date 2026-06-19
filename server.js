@@ -10,7 +10,7 @@ const cors = require("cors");
 const path = require("path");
 
 
-const bcrypt = require("bcryptjs");
+
 
 
 const app = express();
@@ -140,33 +140,52 @@ return res.json({
 
 const bcrypt = require("bcrypt");
 
-app.post("/register", (req, res) => {
+app.post("/register", async (req, res) => {
+
   const { email, password, name } = req.body;
 
- const hashedPassword = await bcrypt.hash(password, 10);
+  try {
 
-db.query(
-  "INSERT INTO users(name,email,password) VALUES(?,?,?)",
-  [name, email, hashedPassword]
-);
-    (err, result) => {
-      if (err) {
-        return res.json({ status: "error", message: "User exists or error" });
-      }
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-      // 🔥 create profile automatically
-      db.query(
-        "INSERT INTO profile (email, name, about) VALUES (?, ?, '')",
-        [email, name],
-        (err2) => {
-          if (err2) console.log(err2);
+    db.query(
+      "INSERT INTO users(name,email,password) VALUES(?,?,?)",
+      [name, email, hashedPassword],
+      (err, result) => {
+
+        if (err) {
+          return res.json({
+            status: "error",
+            message: "User exists or error"
+          });
         }
-      );
 
-      return res.json({ status: "success" });
-    }
-  );
+        // create profile automatically
+        db.query(
+          "INSERT INTO profile (email, name, about) VALUES (?, ?, '')",
+          [email, name],
+          (err2) => {
+            if (err2) console.log(err2);
+          }
+        );
+
+        return res.json({
+          status: "success"
+        });
+      }
+    );
+
+  } catch (error) {
+
+    return res.status(500).json({
+      status: "error",
+      message: "Server error"
+    });
+
+  }
+
 });
+
   app.post("/add-user", (req, res) => {
     
 
