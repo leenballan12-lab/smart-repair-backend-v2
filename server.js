@@ -69,6 +69,50 @@ const jwt = require("jsonwebtoken");
 const JWT_SECRET = "SMART_FIX_SECRET_KEY";
 const bcrypt = require("bcrypt");
 
+function verifyToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader) {
+    return res.status(401).json({ message: "No token" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+
+    req.user = user; // نخزن بيانات المستخدم
+    next();
+  });
+}
+function isAdmin(req, res, next) {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Admins only" });
+  }
+  next();
+}
+
+function isTechnician(req, res, next) {
+  if (req.user.role !== "technician") {
+    return res.status(403).json({ message: "Technicians only" });
+  }
+  next();
+}
+
+app.get("/admin-dashboard", verifyToken, isAdmin, (req, res) => {
+  res.json({ message: "Welcome Admin" });
+});
+
+app.get("/tech-jobs", verifyToken, isTechnician, (req, res) => {
+  res.json({ message: "Technician area" });
+});
+
+app.get("/profile", verifyToken, (req, res) => {
+  res.json({ user: req.user });
+});
+
 
 app.post("/login", (req, res) => {
 
@@ -2106,24 +2150,7 @@ app.put("/update-profile", verifyToken, (req, res) => {
   });
 });
 
-function verifyToken(req, res, next) {
-  const authHeader = req.headers["authorization"];
 
-  if (!authHeader) {
-    return res.status(401).json({ message: "No token" });
-  }
-
-  const token = authHeader.split(" ")[1];
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: "Invalid token" });
-    }
-
-    req.user = user; // نخزن بيانات المستخدم
-    next();
-  });
-}
 
 app.get("/get-profile", verifyToken, (req, res) => {
 
