@@ -2230,20 +2230,40 @@ app.delete("/technicians/:id", (req, res) => {
   });
 });
 
-app.put("/reset-password", (req, res) => {
+
+app.put("/reset-password", async (req, res) => {
+
   const { email, password } = req.body;
 
-  db.query(
-    "UPDATE users SET password=? WHERE email=?",
-    [password, email],
-    (err, result) => {
-      if (err) {
-        return res.json({ status: "error" });
-      }
+  if (!email || !password) {
+    return res.json({ status: "error", message: "Missing fields" });
+  }
 
-      res.json({ status: "success" });
-    }
-  );
+  try {
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    db.query(
+      "UPDATE users SET password=? WHERE email=?",
+      [hashedPassword, email],
+      (err) => {
+
+        if (err) {
+          return res.json({ status: "error", message: "DB error" });
+        }
+
+        res.json({
+          status: "success",
+          message: "Password updated successfully"
+        });
+
+      }
+    );
+
+  } catch (error) {
+    res.json({ status: "error", message: "Server error" });
+  }
+
 });
 
 
