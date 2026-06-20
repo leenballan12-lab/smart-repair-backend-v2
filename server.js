@@ -10,7 +10,7 @@ const cors = require("cors");
 const path = require("path");
 
 
-const bcrypt = require("bcryptjs");
+
 
 
 const app = express();
@@ -64,59 +64,67 @@ app.get("/", (req, res) => {
 
 
 
-app.post("/admin-login", (req, res) => {
-
-  const { email, password } = req.body;
-
-  // 🔥 admin fixed credentials
-  if (email === "admin@test.com" && password === "1234") {
-
-    return res.json({
-      status: "success",
-      role: "admin"
-    });
-
-  }
-
-  return res.json({
-    status: "fail",
-    message: "Invalid credentials"
-  });
-
-});
 
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = "SMART_FIX_SECRET_KEY";
+const bcrypt = require("bcrypt");
+
+
 app.post("/login", (req, res) => {
+
   const { email, password, role } = req.body;
+
+  if (!email || !password) {
+    return res.json({
+      status: "failed",
+      message: "Email and password required"
+    });
+  }
 
   db.query(
     "SELECT * FROM users WHERE email=?",
     [email],
-    (err, result) => {
+    async (err, result) => {
 
       if (err) {
-        return res.status(500).json({ status: "failed" });
+        console.log(err);
+
+        return res.status(500).json({
+          status: "failed"
+        });
       }
 
       if (result.length === 0) {
-        return res.json({ status: "failed" });
+        return res.json({
+          status: "failed",
+          message: "Invalid email or password"
+        });
       }
 
       const user = result[0];
 
-      // check password here
-      if (user.password !== password) {
-        return res.json({ status: "failed" });
-      }
+      // Compare password with bcrypt
+      const match = await bcrypt.compare(
+        password,
+        user.password
+      );
 
-      if (role && user.role !== role) {
+      if (!match) {
         return res.json({
           status: "failed",
-          message: "Wrong role"
+          message: "Invalid email or password"
         });
       }
 
+      // Role protection
+      if (role && user.role !== role) {
+        return res.json({
+          status: "failed",
+          message: "Wrong role selected"
+        });
+      }
+
+      // Create profile automatically if missing
       db.query(
         "INSERT IGNORE INTO profile (email, name, about) VALUES (?, ?, '')",
         [user.email, user.name],
@@ -125,50 +133,103 @@ app.post("/login", (req, res) => {
         }
       );
 
-    const token = jwt.sign(
-  {
-    id: user.id,
-    email: user.email,
-    role: user.role
-  },
-  JWT_SECRET,
-  {
-    expiresIn: "7d"
-  }
-);
-
-return res.json({
-  status: "success",
-  token: token,
-  user: user
-});
-    }
-  );
-});
-
-app.post("/register", (req, res) => {
-  const { email, password, name } = req.body;
-
-  db.query(
-    "INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
-    [email, password, name],
-    (err, result) => {
-      if (err) {
-        return res.json({ status: "error", message: "User exists or error" });
-      }
-
-      // 🔥 create profile automatically
-      db.query(
-        "INSERT INTO profile (email, name, about) VALUES (?, ?, '')",
-        [email, name],
-        (err2) => {
-          if (err2) console.log(err2);
+      // JWT token
+      const token = jwt.sign(
+        {
+          id: user.id,
+          email: user.email,
+          role: user.role
+        },
+        JWT_SECRET,
+        {
+          expiresIn: "7d"
         }
       );
 
-      return res.json({ status: "success" });
+      return res.json({
+        status: "success",
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      });
+
     }
   );
+
+});
+
+
+app.post("/register", async (req, res) => {
+
+  const { email, password, name } = req.body;
+
+  // Validation
+  if (!email || !password || !name) {
+    return res.json({
+      status: "error",
+      message: "All fields are required"
+    });
+  }
+
+  if (password.length < 6) {
+    return res.json({
+      status: "error",
+      message: "Password must be at least 6 characters"
+    });
+  }
+
+  try {
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    db.query(
+      "INSERT INTO users (email, password, name, role) VALUES (?, ?, ?, ?)",
+      [email, hashedPassword, name, "user"],
+      (err, result) => {
+
+        if (err) {
+          console.log(err);
+
+          return res.json({
+            status: "error",
+            message: "User already exists"
+          });
+        }
+
+        // Create profile automatically
+        db.query(
+          "INSERT INTO profile (email, name, about) VALUES (?, ?, '')",
+          [email, name],
+          (err2) => {
+            if (err2) {
+              console.log("Profile Error:", err2);
+            }
+          }
+        );
+
+        return res.json({
+          status: "success",
+          message: "Account created successfully"
+        });
+
+      }
+    );
+
+  } catch (error) {
+
+    console.log(error);
+
+    return res.status(500).json({
+      status: "error",
+      message: "Server error"
+    });
+  }
+
 });
   app.post("/add-user", (req, res) => {
     
