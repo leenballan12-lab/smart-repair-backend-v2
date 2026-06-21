@@ -345,27 +345,62 @@ app.get("/get-bookings", (req, res) => {
   });
 
 });
+const multer = require("multer");
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // 👈 هون
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
+});
+const upload = multer({ storage });
 
-app.post("/requests", verifyToken, (req, res) => {
+app.post(
+  "/requests",
+  verifyToken,
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "voice", maxCount: 1 }
+  ]),
+  (req, res) => {
 
     const { problem, device, location } = req.body;
 
-    const user_email = req.user.email; // 🔐 من التوكن
+    const user_email = req.user.email;
+
+    const image =
+      req.files?.image?.[0]?.filename || null;
+
+    const voice =
+      req.files?.voice?.[0]?.filename || null;
 
     const sql = `
-      INSERT INTO requests (user_email, problem, device, location)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO requests
+      (user_email, problem, device, location, image, voice)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
 
-    db.query(sql, [user_email, problem, device, location], (err) => {
+    db.query(
+      sql,
+      [user_email, problem, device, location, image, voice],
+      (err) => {
+
         if (err) {
-            return res.status(500).json({ status: "error" });
+          console.log(err);
+          return res.status(500).json({
+            status: "error"
+          });
         }
 
-        res.json({ status: "success" });
-    });
-});
+        res.json({
+          status: "success"
+        });
+      }
+    );
+  }
+);
 
 app.post("/ai-booking", (req, res) => {
 
@@ -1474,19 +1509,11 @@ app.put("/invoices/:id", (req, res) => {
   );
 
 });
-const multer = require("multer");
 
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // 👈 هون
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  }
-});
 
-const upload = multer({ storage });
+
+
 app.post(
   "/requests-upload",
   upload.fields([
