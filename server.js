@@ -278,15 +278,15 @@ app.post("/register", async (req, res) => {
   app.post("/add-user", (req, res) => {
     
 
-  const { name, email,password} = req.body;
+  const { name, email} = req.body;
   console.log("body:",req.body);
 
   const sql = `
-    INSERT INTO users (name, email,password, role)
+    INSERT INTO users (name, email)
     VALUES (?, ?, ?, 'user')
   `;
 
-db.query(sql, [name, email,password], (err, result) => {
+db.query(sql, [name, email], (err, result) => {
 
   if (err) {
     console.log("❌ DB ERROR:", err);
