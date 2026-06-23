@@ -275,37 +275,46 @@ app.post("/register", async (req, res) => {
   }
 
 });
-app.post("/add-user", (req, res) => {
 
+
+app.post("/add-user", async (req, res) => {
   const { name, email } = req.body;
 
-  console.log("BODY:", req.body);
+  try {
+    const defaultPassword = "1234567@";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
-  const sql = `
-    INSERT INTO users (name, email, role)
-    VALUES (?, ?, ?)
-  `;
+    const sql = `
+      INSERT INTO users (name, email, password, role)
+      VALUES (?, ?, ?, ?)
+    `;
 
-  db.query(
-    sql,
-    [name, email, "user"],
-    (err, result) => {
+    db.query(
+      sql,
+      [name, email, hashedPassword, "user"],
+      (err, result) => {
+        if (err) {
+          console.log("DB ERROR:", err);
+          return res.status(500).json({
+            status: "error",
+            error: err.message,
+          });
+        }
 
-      if (err) {
-        console.log("DB ERROR:", err);
-        return res.status(500).json({
-          status: "error",
-          error: err
+        res.json({
+          status: "success",
+          message: "User added successfully",
+          defaultPassword: "1234567@",
         });
       }
-
-      res.json({
-        status: "success",
-        id: result.insertId
-      });
-    }
-  );
-
+    );
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
 });
 
   
