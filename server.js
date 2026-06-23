@@ -275,31 +275,38 @@ app.post("/register", async (req, res) => {
   }
 
 });
-  app.post("/add-user", (req, res) => {
-    
+app.post("/add-user", (req, res) => {
 
-  const { name, email} = req.body;
-  console.log("body:",req.body);
+  const { name, email } = req.body;
+
+  console.log("BODY:", req.body);
 
   const sql = `
-    INSERT INTO users (name, email)
-    VALUES (?, ?, ?, 'user')
+    INSERT INTO users (name, email, role)
+    VALUES (?, ?, ?)
   `;
 
-db.query(sql, [name, email], (err, result) => {
+  db.query(
+    sql,
+    [name, email, "user"],
+    (err, result) => {
 
-  if (err) {
-    console.log("❌ DB ERROR:", err);
-    return res.json({ status: "error", error: err });
-  }
+      if (err) {
+        console.log("DB ERROR:", err);
+        return res.status(500).json({
+          status: "error",
+          error: err
+        });
+      }
 
-  console.log("✅ INSERT SUCCESS:", result);
+      res.json({
+        status: "success",
+        id: result.insertId
+      });
+    }
+  );
 
-  res.json({ status: "success" });
 });
-
-});
-  
 
   
   
